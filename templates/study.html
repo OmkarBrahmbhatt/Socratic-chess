@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ phase_title }} · Socratic Chess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='study.js') }}" defer></script>
+  </head>
+  <body class="study-page">
+    <header class="topbar">
+      <a class="brand" href="{{ url_for('home') }}" aria-label="Socratic Chess home">
+        <span class="brand-mark" aria-hidden="true">♞</span>
+        <span>Socratic Chess</span>
+      </a>
+      <span class="player-code">Player code <strong>{{ player_code }}</strong></span>
+    </header>
+
+    <main class="study-main" data-condition="{{ condition }}" data-attempt-id="{{ attempt_id }}">
+      <nav class="phase-nav" aria-label="Study phases">
+        <span class="phase-pill {% if phase_number == 1 %}active{% endif %}">1 · Warm-up</span>
+        <span class="phase-pill {% if phase_number == 2 %}active{% endif %}">2 · Practice</span>
+        <span class="phase-pill {% if phase_number == 3 %}active{% endif %}">3 · Final check</span>
+      </nav>
+
+      <div class="phase-heading">
+        <h1>{{ phase_title }}</h1>
+        <span class="puzzle-count">Puzzle {{ puzzle_number }} of {{ puzzle_count }}</span>
+      </div>
+      <progress class="progress" value="{{ phase_progress }}" max="100">
+        {{ phase_progress|int }}%
+      </progress>
+
+      <section class="puzzle-layout">
+        <div class="board-column">
+          <div class="turn-line">
+            <span class="turn-dot" aria-hidden="true"></span>
+            <strong>White to move</strong>
+            <span>Find the best move</span>
+          </div>
+          <div class="chessboard" role="group" aria-label="Demo chessboard">
+            {% for row in rows %}
+              {% for square in row %}
+                <button
+                  type="button"
+                  class="square {{ square.tone }}"
+                  data-square="{{ square.name }}"
+                  aria-label="{{ square.name }}{% if square.piece %}, {{ square.color }} piece{% endif %}"
+                >
+                  <span class="piece {{ square.color }}">{{ square.piece }}</span>
+                  {% if square.name[0] == "a" or square.name[1] == "1" %}
+                    <span class="coordinate">{{ square.name }}</span>
+                  {% endif %}
+                </button>
+              {% endfor %}
+            {% endfor %}
+          </div>
+          <p class="demo-note">Demo position only — puzzle positions will be added later.</p>
+        </div>
+
+        <aside class="coach-panel">
+          <h2>{% if condition == "question" %}Coach{% else %}{{ "Coach" if condition != "no_feedback" else "Puzzle" }}{% endif %}</h2>
+
+          {% if condition == "no_feedback" %}
+            <div class="coach-message muted">
+              <strong>No hints in this round</strong>
+              <p>Make your move on the board. Your first move counts. You won't see whether it was right, so the check stays fair.</p>
+            </div>
+            <p class="helper-text">There's no visible timer. Take the time you need.</p>
+          {% elif condition == "question" %}
+            <div class="coach-message question">
+              <span class="coach-kicker">QUESTION-BASED PRACTICE</span>
+              <p class="coach-question">{{ question_prompt }}</p>
+              <p>{{ puzzle.prompt }}</p>
+            </div>
+            <p id="move-feedback" class="feedback" aria-live="polite">Try a move on the board.</p>
+            <button type="button" class="button secondary" id="hint-button">Show next hint</button>
+          {% else %}
+            <div class="coach-message answer">
+              <span class="coach-kicker">ANSWER-BASED PRACTICE</span>
+              <p>{{ puzzle.prompt }}</p>
+              <p>After your first attempt, choose Retry or Show answer.</p>
+            </div>
+            <p id="move-feedback" class="feedback" aria-live="polite">Try a move on the board.</p>
+            <div class="answer-options" id="answer-options" hidden>
+              <button type="button" class="button secondary" id="retry-button">Retry</button>
+              <button type="button" class="button secondary" id="show-answer-button">Show answer</button>
+            </div>
+            <p id="answer-display" class="answer-display" aria-live="polite"></p>
+          {% endif %}
+
+          <div class="coach-actions">
+            <form method="post" action="{{ url_for('advance_puzzle') }}" id="advance-form">
+              <input type="hidden" name="elapsed_ms" value="0" class="elapsed-input">
+              <button type="submit" class="button primary" id="advance-button" disabled>
+                Next puzzle
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('advance_puzzle') }}" class="skip-form">
+              <input type="hidden" name="action" value="skip">
+              <input type="hidden" name="elapsed_ms" value="0" class="elapsed-input">
+              <button type="submit" class="button secondary">I don't know, skip</button>
+            </form>
+          </div>
+        </aside>
+      </section>
+
+      <p class="study-footnote">
+        This is a demo study flow. The board and answers are placeholders, not real study puzzles.
+      </p>
+    </main>
+  </body>
+</html>

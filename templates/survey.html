@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quick check · Socratic Chess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='study.js') }}" defer></script>
+  </head>
+  <body>
+    <main class="survey-main">
+      {% if survey_type == "practice" %}
+        <p class="eyebrow">Quick check · {{ "1" if practice_condition == "question" else "2" }} of 2</p>
+        <h1>How did that practice feel?</h1>
+        <p class="intro">Think only about the 6 {{ "question-based" if practice_condition == "question" else "answer-based" }} puzzles you just finished. Move each slider to where it fits. There are no right answers.</p>
+        {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post" action="{{ url_for('save_survey') }}" class="survey-form">
+          {% set questions = [
+            ("demand", "How mentally demanding were these puzzles?", "Very low", "Very high"),
+            ("rushed", "How hurried or rushed was the pace?", "Very low", "Very high"),
+            ("success", "How successful were you at solving these puzzles?", "Perfect", "Failure"),
+            ("effort", "How hard did you have to work to reach your level of performance?", "Very low", "Very high")
+          ] %}
+          {% for name, question, low, high in questions %}
+            <fieldset class="slider-card">
+              <label for="{{ name }}">{{ question }}</label>
+              <input id="{{ name }}" type="range" name="{{ name }}" min="1" max="7" value="4" required>
+              <div class="range-labels"><span>{{ low }}</span><span>{{ high }}</span></div>
+            </fieldset>
+          {% endfor %}
+          <button type="submit" class="button primary">Continue</button>
+        </form>
+      {% else %}
+        <p class="eyebrow">All three parts done</p>
+        <h1>Thanks, you're finished!</h1>
+        <p class="intro">One last question, then you can close this page.</p>
+        {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post" action="{{ url_for('save_survey') }}" class="survey-form preference-form">
+          <fieldset>
+            <legend>Which kind of help would you rather use when you practice?</legend>
+            <label class="choice"><input type="radio" name="preference" value="questions" required> A coach that asks me questions first</label>
+            <label class="choice"><input type="radio" name="preference" value="answer" required> A coach that shows me the answer</label>
+            <label class="choice"><input type="radio" name="preference" value="no_preference" required> No preference</label>
+            <label for="explanation" class="explanation-label">Why? <span>(optional)</span></label>
+            <textarea id="explanation" name="explanation" rows="4" maxlength="2000"></textarea>
+          </fieldset>
+          <button type="submit" class="button primary">Submit</button>
+        </form>
+        <div class="study-note">
+          <h2>About this prototype</h2>
+          <p>Your responses, moves, and timings are stored locally under your player code. No name is requested. The positions shown are demo placeholders and should not be used as research results.</p>
+        </div>
+      {% endif %}
+      <p class="player-code">Player code <strong>{{ player_code }}</strong></p>
+    </main>
+  </body>
+</html>

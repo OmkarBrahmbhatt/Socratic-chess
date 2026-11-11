@@ -3,24 +3,50 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Socratic Chess</title>
+    <title>Socratic Chess · Study</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
     <main class="card">
-      <p class="eyebrow">A study space for chess</p>
-      <h1>Socratic Chess</h1>
-      <p class="intro">Practice positions at your level, one thoughtful move at a time.</p>
+      <p class="eyebrow">About 45 minutes · on your own</p>
+      <h1>Help us test two ways to learn chess tactics</h1>
+      <p class="intro">You'll solve chess puzzles in three short parts. In practice, one coach asks questions and another shows an answer.</p>
+
+      <h2>What you'll do</h2>
+      <div class="phase-cards">
+        <section class="phase-card">
+          <span class="phase-number">1</span>
+          <h3>Warm-up check</h3>
+          <p>10 puzzles, no hints</p>
+        </section>
+        <section class="phase-card">
+          <span class="phase-number">2</span>
+          <h3>Practice</h3>
+          <p>12 puzzles: 6 question-based and 6 answer-based</p>
+        </section>
+        <section class="phase-card">
+          <span class="phase-number">3</span>
+          <h3>Final check</h3>
+          <p>10 puzzles, no hints</p>
+        </section>
+      </div>
+      <p class="intro small-intro">Fork and pin themes are balanced across the checks. A short slider check follows each half of practice.</p>
+
+      <section class="consent-list">
+        <h2>Before you start</h2>
+        <ul>
+          <li>This is a study prototype. The current chess positions and solutions are demo placeholders, not research puzzles.</li>
+          <li>Participation is voluntary. You can stop at any time by closing this page.</li>
+          <li>We do not ask for your name. Your rating, moves, timing, and answers are stored locally under a random player code.</li>
+          <li>Study data is stored in a local SQLite database on the machine running this app.</li>
+        </ul>
+      </section>
 
       {% if error %}
-        <p class="message error" role="alert">{{ error }}</p>
-      {% elif rating is not none %}
-        <p class="message success" role="status">
-          Rating received: {{ rating }}. Your practice set is the next step.
-        </p>
+        <p class="message" role="alert">{{ error }}</p>
       {% endif %}
 
-      <form method="post">
+      <form method="post" action="{{ url_for('start_study') }}">
         <label for="rating">What is your chess rating?</label>
         <div class="form-row">
           <input
@@ -28,12 +54,18 @@
             name="rating"
             type="number"
             min="0"
+            max="10000"
             step="1"
-            value="{{ rating if rating is not none else '' }}"
+            value="{{ rating }}"
             required
           >
-          <button type="submit">Continue</button>
         </div>
+        <label class="consent-check">
+          <input type="checkbox" name="consent" value="yes" required>
+          <span>I am 18 or older and agree to take part in this study.</span>
+        </label>
+        <button type="submit" class="button primary">Start the warm-up check</button>
+        <span class="desktop-tip">Tip: a laptop or desktop makes the board easier to use.</span>
       </form>
     </main>
   </body>

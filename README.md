@@ -1,6 +1,7 @@
 # Socratic Chess
 
-A Flask web app for deliberate, study-focused chess practice.
+A Flask study prototype for comparing question-based and answer-based chess
+tactics practice.
 
 ## Run locally
 
@@ -13,11 +14,39 @@ flask --app app run --debug
 
 Open the local URL printed by Flask in your browser.
 
-## Current starting point
+## Study flow
 
-The home page accepts a player's rating and validates it on the server. Puzzle
-selection, puzzle content, move/position timing, and persistence are not
-implemented yet; those can be shaped as the product requirements are defined.
+1. Participants enter a rating and confirm they are 18 or older.
+2. Warm-up check: 10 no-feedback puzzle slots.
+3. Question-based practice: 6 puzzles, followed by a short slider survey.
+4. Answer-based practice: 6 puzzles, followed by the same survey.
+5. Final check: 10 no-feedback puzzle slots, followed by a preference question.
+
+In question-based practice, wrong moves prompt a coaching hint. In
+answer-based practice, after an attempt participants can either retry or reveal
+the answer.
+
+Fork and pin themes are balanced across warm-up, practice conditions, and final
+check. The final-check order is shuffled for each participant. Puzzle selection
+is currently a demo: two sample positions are repeated to fill the slots.
+Replace the entries in `puzzles.py` with verified Lichess puzzle positions,
+solutions, and hints before using this app for a real study. The demo board
+records a clicked from/to square pair and compares it with its placeholder
+answer; legal-move validation and multi-move solutions are not implemented yet.
+Demo attempts are marked in the database with `is_demo = 1`.
+
+## Data storage
+
+The app does not ask for a participant's name. It stores the rating, consent
+timestamp, anonymous player code, puzzle themes and attempts, move coordinates,
+per-move and per-position elapsed times, hints/retries, and survey responses in
+`instance/study.sqlite3` on the machine running Flask. This database is local
+and is not uploaded to GitHub. Do not collect real study data until your study
+consent and data-retention procedures are finalized.
+
+Set `SOCRATIC_CHESS_SECRET_KEY` to a persistent random secret before running a
+shared or deployed instance. Without it, the app generates an in-memory key,
+so participant browser sessions will not survive an application restart.
 
 ## Run tests
 
