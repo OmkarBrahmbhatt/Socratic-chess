@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ phase_title }} · Socratic Chess</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="{{ url_for('static', filename='study.js') }}" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
+    <script type="module" src="{{ url_for('static', filename='board.js') }}"></script>
   </head>
   <body class="study-page">
     <header class="topbar">
@@ -35,25 +38,17 @@
         <div class="board-column">
           <div class="turn-line">
             <span class="turn-dot" aria-hidden="true"></span>
-            <strong>White to move</strong>
+            <strong>{{ "White" if side_to_move == "w" else "Black" }} to move</strong>
             <span>Find the best move</span>
           </div>
-          <div class="chessboard" role="group" aria-label="Demo chessboard">
-            {% for row in rows %}
-              {% for square in row %}
-                <button
-                  type="button"
-                  class="square {{ square.tone }}"
-                  data-square="{{ square.name }}"
-                  aria-label="{{ square.name }}{% if square.piece %}, {{ square.color }} piece{% endif %}"
-                >
-                  <span class="piece {{ square.color }}">{{ square.piece }}</span>
-                  {% if square.name[0] == "a" or square.name[1] == "1" %}
-                    <span class="coordinate">{{ square.name }}</span>
-                  {% endif %}
-                </button>
-              {% endfor %}
-            {% endfor %}
+          <div class="board-frame">
+            <div
+              id="board"
+              class="lichess-board"
+              data-fen="{{ puzzle.fen }}"
+              role="group"
+              aria-label="Chessboard, {{ 'white' if side_to_move == 'w' else 'black' }} to move"
+            ></div>
           </div>
           <p class="demo-note">Demo position only — puzzle positions will be added later.</p>
         </div>

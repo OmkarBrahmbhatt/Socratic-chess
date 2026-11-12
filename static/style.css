@@ -95,8 +95,7 @@ textarea {
 input:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
-a:focus-visible,
-.square:focus-visible {
+a:focus-visible {
   outline: 3px solid #8797f2;
   outline-offset: 2px;
 }
@@ -353,72 +352,6 @@ a:focus-visible,
   border-radius: 50%;
 }
 
-.chessboard {
-  display: grid;
-  width: min(100%, 650px);
-  aspect-ratio: 1;
-  grid-template-columns: repeat(8, 1fr);
-  overflow: hidden;
-  border: 1px solid #c3ccd2;
-  border-radius: 7px;
-  box-shadow: 0 2px 6px rgb(22 34 48 / 10%);
-}
-
-.square {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 0;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.square.light {
-  background: #e9e5d9;
-}
-
-.square.dark {
-  background: #829baa;
-}
-
-.square.selected {
-  box-shadow: inset 0 0 0 5px #f4cc4b;
-}
-
-.square.target {
-  box-shadow: inset 0 0 0 4px rgb(52 72 187 / 70%);
-}
-
-.piece {
-  z-index: 1;
-  font-family: "Apple Symbols", "Segoe UI Symbol", serif;
-  font-size: clamp(1.65rem, 5vw, 3.2rem);
-  line-height: 1;
-  user-select: none;
-}
-
-.piece.white {
-  color: #fff;
-  text-shadow: -1px -1px 0 #40464b, 1px -1px 0 #40464b, -1px 1px 0 #40464b, 1px 1px 0 #40464b, 0 2px 2px #40464b;
-}
-
-.piece.black {
-  color: #171b20;
-  text-shadow: 0 1px 0 rgb(255 255 255 / 28%);
-}
-
-.coordinate {
-  position: absolute;
-  bottom: 1px;
-  left: 3px;
-  color: #38434b;
-  font-size: clamp(0.52rem, 1vw, 0.72rem);
-  line-height: 1;
-}
-
 .demo-note,
 .study-footnote {
   margin: 10px 0 0;
@@ -619,7 +552,7 @@ a:focus-visible,
     min-height: 0;
   }
 
-  .chessboard {
+  .board-frame {
     margin: 0 auto;
   }
 
@@ -688,4 +621,28 @@ a:focus-visible,
   .coach-actions .button {
     width: 100%;
   }
+}
+
+/* Lichess board (chessground) */
+.board-frame {
+  width: min(100%, 650px);
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgb(22 34 48 / 18%);
+}
+.lichess-board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+.lichess-board.cg-wrap {
+  width: 100%;
+  height: auto;
+}
+.board-frame .lichess-board.cg-wrap coords {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+[hidden] {
+  display: none !important;
 }

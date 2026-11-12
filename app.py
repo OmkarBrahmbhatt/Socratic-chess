@@ -116,39 +116,6 @@ def build_schedule(rating):
     }
 
 
-def board_squares(fen):
-    rows = []
-    files = "abcdefgh"
-    for row_index, fen_row in enumerate(fen.split()[0].split("/")):
-        rank = 8 - row_index
-        file_index = 0
-        row = []
-        for token in fen_row:
-            if token.isdigit():
-                for _ in range(int(token)):
-                    row.append(
-                        {
-                            "name": f"{files[file_index]}{rank}",
-                            "piece": "",
-                            "color": "",
-                            "tone": "light" if (file_index + row_index) % 2 == 1 else "dark",
-                        }
-                    )
-                    file_index += 1
-            else:
-                row.append(
-                    {
-                        "name": f"{files[file_index]}{rank}",
-                        "piece": PUZZLES["glyphs"][token],
-                        "color": "white" if token.isupper() else "black",
-                        "tone": "light" if (file_index + row_index) % 2 == 1 else "dark",
-                    }
-                )
-                file_index += 1
-        rows.append(row)
-    return rows
-
-
 def _connect_db():
     connection = sqlite3.connect(current_app.config["DATABASE"])
     connection.row_factory = sqlite3.Row
@@ -281,7 +248,6 @@ def create_app(test_config=None):
             attempt_id = attempt["id"]
         session["attempt_id"] = attempt_id
 
-        rows = board_squares(puzzle["fen"])
         return render_template(
             "study.html",
             phase=phase,
@@ -292,7 +258,7 @@ def create_app(test_config=None):
             puzzle_count=phase_info["count"],
             player_code=player_code,
             puzzle=puzzle,
-            rows=rows,
+            side_to_move=puzzle["fen"].split()[1],
             condition=phase_info["condition"],
             attempt_id=attempt_id,
             phase_progress=(index + 1) / phase_info["count"] * 100,
@@ -469,7 +435,7 @@ def create_app(test_config=None):
             ),
         )
         db.commit()
-        return jsonify(answer=puzzle["solution_notation"])
+        return jsonify(answer=puzzle["solution_notation"], solution=puzzle["solution"])
 
     @app.post("/advance")
     def advance_puzzle():
