@@ -116,11 +116,64 @@ def build_schedule(rating):
     }
 
 
+def _postgres_schema():
+    return SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+
+
+class _Row(dict):
+    """Row that supports both row["column"] and row[0], like sqlite3.Row."""
+
+    def __init__(self, columns, values):
+        super().__init__(zip(columns, values))
+        self._values = tuple(values)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return super().__getitem__(key)
+
+
+def _row_factory(cursor):
+    columns = [column.name for column in cursor.description or ()]
+    return lambda values: _Row(columns, values)
+
+
+class _PostgresConnection:
+    """Thin wrapper so the app's sqlite-style "?" queries run on Postgres."""
+
+    def __init__(self, url):
+        import psycopg
+
+        self._connection = psycopg.connect(url, row_factory=_row_factory)
+
+    def execute(self, sql, params=()):
+        return self._connection.execute(sql.replace("?", "%s"), params)
+
+    def commit(self):
+        self._connection.commit()
+
+    def close(self):
+        self._connection.close()
+
+
+def _init_postgres(url):
+    import psycopg
+
+    with psycopg.connect(url) as connection:
+        # Serialize schema creation across gunicorn workers starting at once.
+        connection.execute("SELECT pg_advisory_xact_lock(724181)")
+        connection.execute(_postgres_schema())
+
+
 def _connect_db():
+    url = current_app.config.get("DATABASE_URL")
+    if url:
+        return _PostgresConnection(url)
     connection = sqlite3.connect(current_app.config["DATABASE"])
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
+
 
 def get_db():
     if "db" not in g:
@@ -139,15 +192,19 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SOCRATIC_CHESS_SECRET_KEY") or secrets.token_hex(32),
         DATABASE=os.path.join(app.instance_path, "study.sqlite3"),
+        DATABASE_URL=os.environ.get("DATABASE_URL"),
     )
     if test_config:
         app.config.update(test_config)
-    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(app.config["DATABASE"])
-    try:
-        connection.executescript(SCHEMA)
-    finally:
-        connection.close()
+    if app.config["DATABASE_URL"]:
+        _init_postgres(app.config["DATABASE_URL"])
+    else:
+        Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(app.config["DATABASE"])
+        try:
+            connection.executescript(SCHEMA)
+        finally:
+            connection.close()
     app.teardown_appcontext(close_db)
 
     @app.get("/")
@@ -230,7 +287,7 @@ def create_app(test_config=None):
             cursor = db.execute(
                 "INSERT INTO puzzle_attempts "
                 "(player_code, phase, puzzle_number, puzzle_id, theme, condition, "
-                "is_demo, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "is_demo, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                 (
                     player_code,
                     phase,
@@ -242,8 +299,8 @@ def create_app(test_config=None):
                     utc_now(),
                 ),
             )
+            attempt_id = cursor.fetchone()["id"]
             db.commit()
-            attempt_id = cursor.lastrowid
         else:
             attempt_id = attempt["id"]
         session["attempt_id"] = attempt_id

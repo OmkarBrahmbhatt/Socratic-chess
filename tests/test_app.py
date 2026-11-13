@@ -16,6 +16,7 @@ class StudyFlowTests(unittest.TestCase):
                 "TESTING": True,
                 "SECRET_KEY": "test-key",
                 "DATABASE": self.database,
+                "DATABASE_URL": None,
             }
         )
         self.client = self.app.test_client()

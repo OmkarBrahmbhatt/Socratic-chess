@@ -39,9 +39,18 @@ Demo attempts are marked in the database with `is_demo = 1`.
 
 The app does not ask for a participant's name. It stores the rating, consent
 timestamp, anonymous player code, puzzle themes and attempts, move coordinates,
-per-move and per-position elapsed times, hints/retries, and survey responses in
-`instance/study.sqlite3` on the machine running Flask. This database is local
-and is not uploaded to GitHub. Do not collect real study data until your study
+per-move and per-position elapsed times, hints/retries, and survey responses.
+
+- If `DATABASE_URL` is set (e.g. a Neon Postgres connection string), data is
+  stored in that Postgres database. Use this for any deployed instance: hosts
+  like Render have ephemeral disks, so a local SQLite file would be wiped on
+  each deploy or restart. Tables are created automatically on startup.
+- Otherwise data goes to `instance/study.sqlite3` on the machine running Flask
+  (handy for local development; tests always use a temporary SQLite file).
+
+For local use, put `DATABASE_URL=...` in a `.env` file (gitignored; loaded by
+`flask run`). On Render, add `DATABASE_URL` as an environment variable. Never
+commit the connection string. Do not collect real study data until your study
 consent and data-retention procedures are finalized.
 
 Set `SOCRATIC_CHESS_SECRET_KEY` to a persistent random secret before running a
