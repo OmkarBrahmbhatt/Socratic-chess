@@ -32,6 +32,7 @@ MAX_ELAPSED_MS = 24 * 60 * 60 * 1000
 # participants.rating_band; participants.rating holds the band's lower bound
 # and is used for puzzle selection.
 RATING_BANDS = {
+    "Below 400": 0,
     "400-800": 400,
     "800-1000": 800,
     "1000-1200": 1000,

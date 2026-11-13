@@ -16,7 +16,7 @@ Open the local URL printed by Flask in your browser.
 
 ## Study flow
 
-1. Participants choose a rating range (400-800 up to 2000+) and confirm they are 18 or older.
+1. Participants choose a rating range (Below 400 up to 2000+) and confirm they are 18 or older.
 2. Warm-up check: 10 no-feedback puzzle slots.
 3. Question-based practice: 6 puzzles, followed by a short slider survey.
 4. Answer-based practice: 6 puzzles, followed by the same survey.

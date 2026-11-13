@@ -55,6 +55,7 @@ class StudyFlowTests(unittest.TestCase):
         self.assertIn(b"confirm the study consent", no_consent.data)
 
         self.assertIn(b'<option value="2000+"', response.data)
+        self.assertIn(b'<option value="Below 400"', response.data)
         self.assertIn(b'<option value="400-800"', response.data)
 
         missing_band = self.start_study(rating_band="")
@@ -65,7 +66,7 @@ class StudyFlowTests(unittest.TestCase):
         self.assertEqual(invalid_band.status_code, 400)
         self.assertIn(b"Choose your rating category", invalid_band.data)
 
-        for band in ("400-800", "2000+"):
+        for band in ("Below 400", "400-800", "2000+"):
             self.assertEqual(self.start_study(rating_band=band).status_code, 302)
 
     def test_schedule_balances_themes_and_phase_counts(self):
