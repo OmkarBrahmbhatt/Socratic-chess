@@ -37,8 +37,7 @@
         <ul>
           <li>This is a study prototype. The current chess positions and solutions are demo placeholders, not research puzzles.</li>
           <li>Participation is voluntary. You can stop at any time by closing this page.</li>
-          <li>We do not ask for your name. Your rating, moves, timing, and answers are stored locally under a random player code.</li>
-          <li>Study data is stored in a local SQLite database on the machine running this app.</li>
+          <li>We do not ask for your name. Your rating range, moves, timing, and answers are stored under a random player code in the study database.</li>
         </ul>
       </section>
 
@@ -47,18 +46,14 @@
       {% endif %}
 
       <form method="post" action="{{ url_for('start_study') }}">
-        <label for="rating">What is your chess rating?</label>
+        <label for="rating_band">What is your chess rating?</label>
         <div class="form-row">
-          <input
-            id="rating"
-            name="rating"
-            type="number"
-            min="0"
-            max="10000"
-            step="1"
-            value="{{ rating }}"
-            required
-          >
+          <select id="rating_band" name="rating_band" required>
+            <option value="" disabled {% if not rating_band %}selected{% endif %}>Choose a rating range</option>
+            {% for band in rating_bands %}
+              <option value="{{ band }}" {% if band == rating_band %}selected{% endif %}>{{ band }}</option>
+            {% endfor %}
+          </select>
         </div>
         <label class="consent-check">
           <input type="checkbox" name="consent" value="yes" required>

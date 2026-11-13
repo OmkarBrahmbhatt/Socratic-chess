@@ -72,11 +72,13 @@ h2 {
 
 input,
 button,
+select,
 textarea {
   font: inherit;
 }
 
 input[type="number"],
+select,
 textarea {
   width: 100%;
   padding: 12px 14px;
@@ -93,6 +95,7 @@ textarea {
 }
 
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {

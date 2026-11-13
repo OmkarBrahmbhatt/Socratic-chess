@@ -28,11 +28,25 @@ PRACTICE_SURVEYS = {
     "survey_answer": "answer",
 }
 MAX_ELAPSED_MS = 24 * 60 * 60 * 1000
+# Rating categories shown on the start page. The value is stored as
+# participants.rating_band; participants.rating holds the band's lower bound
+# and is used for puzzle selection.
+RATING_BANDS = {
+    "400-800": 400,
+    "800-1000": 800,
+    "1000-1200": 1000,
+    "1200-1400": 1200,
+    "1400-1600": 1400,
+    "1600-1800": 1600,
+    "1800-2000": 1800,
+    "2000+": 2000,
+}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS participants (
     player_code TEXT PRIMARY KEY,
     rating INTEGER NOT NULL,
+    rating_band TEXT,
     consented_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -163,6 +177,9 @@ def _init_postgres(url):
         # Serialize schema creation across gunicorn workers starting at once.
         connection.execute("SELECT pg_advisory_xact_lock(724181)")
         connection.execute(_postgres_schema())
+        connection.execute(
+            "ALTER TABLE participants ADD COLUMN IF NOT EXISTS rating_band TEXT"
+        )
 
 
 def _connect_db():
@@ -203,42 +220,35 @@ def create_app(test_config=None):
         connection = sqlite3.connect(app.config["DATABASE"])
         try:
             connection.executescript(SCHEMA)
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(participants)")}
+            if "rating_band" not in columns:
+                connection.execute("ALTER TABLE participants ADD COLUMN rating_band TEXT")
+                connection.commit()
         finally:
             connection.close()
     app.teardown_appcontext(close_db)
 
     @app.get("/")
     def home():
-        return render_template("index.html", error=None, rating="")
+        return render_template("index.html", error=None, rating_band="", rating_bands=RATING_BANDS)
 
     @app.post("/")
     def start_study():
-        raw_rating = request.form.get("rating", "").strip()
-        try:
-            rating = int(raw_rating)
-        except ValueError:
+        rating_band = request.form.get("rating_band", "").strip()
+        if rating_band not in RATING_BANDS:
             return render_template(
                 "index.html",
-                error="Enter a whole-number rating.",
-                rating=raw_rating,
+                error="Choose your rating category.",
+                rating_band=rating_band,
+                rating_bands=RATING_BANDS,
             ), 400
-        if rating < 0:
-            return render_template(
-                "index.html",
-                error="Enter a rating of zero or higher.",
-                rating=raw_rating,
-            ), 400
-        if rating > 10000:
-            return render_template(
-                "index.html",
-                error="Enter a rating of 10,000 or lower.",
-                rating=raw_rating,
-            ), 400
+        rating = RATING_BANDS[rating_band]
         if request.form.get("consent") != "yes":
             return render_template(
                 "index.html",
                 error="Please confirm the study consent before continuing.",
-                rating=raw_rating,
+                rating_band=rating_band,
+                rating_bands=RATING_BANDS,
             ), 400
 
         db = get_db()
@@ -249,9 +259,10 @@ def create_app(test_config=None):
             player_code = f"P-{secrets.token_hex(3).upper()}"
         now = utc_now()
         db.execute(
-            "INSERT INTO participants (player_code, rating, consented_at, created_at) "
-            "VALUES (?, ?, ?, ?)",
-            (player_code, rating, now, now),
+            "INSERT INTO participants "
+            "(player_code, rating, rating_band, consented_at, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (player_code, rating, rating_band, now, now),
         )
         db.commit()
         session.clear()

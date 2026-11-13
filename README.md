@@ -16,7 +16,7 @@ Open the local URL printed by Flask in your browser.
 
 ## Study flow
 
-1. Participants enter a rating and confirm they are 18 or older.
+1. Participants choose a rating range (400-800 up to 2000+) and confirm they are 18 or older.
 2. Warm-up check: 10 no-feedback puzzle slots.
 3. Question-based practice: 6 puzzles, followed by a short slider survey.
 4. Answer-based practice: 6 puzzles, followed by the same survey.
@@ -37,7 +37,7 @@ Demo attempts are marked in the database with `is_demo = 1`.
 
 ## Data storage
 
-The app does not ask for a participant's name. It stores the rating, consent
+The app does not ask for a participant's name. It stores the rating range, consent
 timestamp, anonymous player code, puzzle themes and attempts, move coordinates,
 per-move and per-position elapsed times, hints/retries, and survey responses.
 

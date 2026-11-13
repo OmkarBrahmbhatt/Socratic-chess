@@ -24,10 +24,10 @@ class StudyFlowTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def start_study(self, rating="1200", consent="yes"):
+    def start_study(self, rating_band="1200-1400", consent="yes"):
         return self.client.post(
             "/",
-            data={"rating": rating, "consent": consent},
+            data={"rating_band": rating_band, "consent": consent},
             follow_redirects=False,
         )
 
@@ -54,13 +54,19 @@ class StudyFlowTests(unittest.TestCase):
         self.assertEqual(no_consent.status_code, 400)
         self.assertIn(b"confirm the study consent", no_consent.data)
 
-        invalid_rating = self.start_study(rating="beginner")
-        self.assertEqual(invalid_rating.status_code, 400)
-        self.assertIn(b"whole-number rating", invalid_rating.data)
+        self.assertIn(b'<option value="2000+"', response.data)
+        self.assertIn(b'<option value="400-800"', response.data)
 
-        too_high = self.start_study(rating="10001")
-        self.assertEqual(too_high.status_code, 400)
-        self.assertIn(b"10,000 or lower", too_high.data)
+        missing_band = self.start_study(rating_band="")
+        self.assertEqual(missing_band.status_code, 400)
+        self.assertIn(b"Choose your rating category", missing_band.data)
+
+        invalid_band = self.start_study(rating_band="1300")
+        self.assertEqual(invalid_band.status_code, 400)
+        self.assertIn(b"Choose your rating category", invalid_band.data)
+
+        for band in ("400-800", "2000+"):
+            self.assertEqual(self.start_study(rating_band=band).status_code, 302)
 
     def test_schedule_balances_themes_and_phase_counts(self):
         schedule = build_schedule(1200)
@@ -170,7 +176,7 @@ class StudyFlowTests(unittest.TestCase):
 
         with sqlite3.connect(self.database) as db:
             participant = db.execute(
-                "SELECT rating FROM participants"
+                "SELECT rating, rating_band FROM participants"
             ).fetchone()
             attempts = db.execute(
                 "SELECT phase, theme, elapsed_ms, is_demo FROM puzzle_attempts"
@@ -185,7 +191,7 @@ class StudyFlowTests(unittest.TestCase):
                 "SELECT stage, preference, explanation FROM survey_responses"
             ).fetchall()
 
-        self.assertEqual(participant[0], 1200)
+        self.assertEqual(participant, (1200, "1200-1400"))
         self.assertEqual(len(attempts), 32)
         self.assertTrue(all(attempt[3] == 1 for attempt in attempts))
         self.assertTrue(all(attempt[2] >= 0 for attempt in attempts))
