@@ -3,7 +3,7 @@ import sqlite3
 import tempfile
 import unittest
 
-from app import build_schedule, create_app
+from app import RATING_BANDS, build_schedule, create_app
 from puzzles import PUZZLES
 
 
@@ -68,6 +68,28 @@ class StudyFlowTests(unittest.TestCase):
 
         for band in ("Below 400", "400-800", "2000+"):
             self.assertEqual(self.start_study(rating_band=band).status_code, 302)
+
+    def test_each_rating_category_uses_its_own_puzzles(self):
+        for band, rating in RATING_BANDS.items():
+            schedule = build_schedule(rating)
+            for phase, puzzle_ids in schedule.items():
+                self.assertTrue(
+                    all(PUZZLES[puzzle_id]["rating_band"] == band for puzzle_id in puzzle_ids),
+                    f"{band} {phase} got puzzles from another category",
+                )
+            # Practice blocks need 3 of each theme and every category has 4.
+            self.assertEqual(len(set(schedule["practice_question"])), 6)
+            self.assertEqual(len(set(schedule["practice_answer"])), 6)
+
+    def test_puzzles_are_well_formed(self):
+        squares = {f"{file}{rank}" for file in "abcdefgh" for rank in "12345678"}
+        for puzzle_id, puzzle in PUZZLES.items():
+            self.assertIn(puzzle["theme"], ("Forks", "Pins"), puzzle_id)
+            self.assertIn(puzzle["rating_band"], RATING_BANDS, puzzle_id)
+            self.assertIn(puzzle["fen"].split()[1], ("w", "b"), puzzle_id)
+            self.assertIn(puzzle["solution"][:2], squares, puzzle_id)
+            self.assertIn(puzzle["solution"][2:4], squares, puzzle_id)
+            self.assertEqual(len(puzzle["hints"]), 3, puzzle_id)
 
     def test_schedule_balances_themes_and_phase_counts(self):
         schedule = build_schedule(1200)

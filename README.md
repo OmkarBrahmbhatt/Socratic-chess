@@ -10,8 +10,10 @@ Each participant solves puzzles before practice, during practice and after
 practice. The study compares their warm-up and final results and their survey
 answers to see which style of practice helps more.
 
-> **Status: prototype.** The chess puzzles are demo placeholders: two sample
-> positions repeated to fill every slot. Do not collect real study data until
+> **Status: prototype.** The chess puzzles are demo placeholders: 4 forks
+> and 4 pins per rating category (72 in total). They are legal positions with
+> one correct move, but they are not real research puzzles. Do not collect real
+> study data until
 > real puzzles are added and your consent and data-retention procedures are
 > approved.
 
@@ -137,8 +139,9 @@ Participants who finished the whole study have a `survey_responses` row with
 Puzzles live in `puzzles.py`. Each entry looks like this:
 
 ```python
-"fork-001": {
+"1200-1400-fork-1": {
     "theme": "Forks",                 # "Forks" or "Pins"
+    "rating_band": "1200-1400",       # must match a category in app.py RATING_BANDS
     "rating_min": 1200,
     "rating_max": 1399,
     "fen": "r2q3k/pp4pp/8/4N3/8/8/8/6K1 w - - 0 1",  # side to move = participant
@@ -162,10 +165,12 @@ puzzles, 108 of which need hints.
 
 - Only puzzles solved in **one move** are supported. Multi-move solutions are
   not implemented yet.
-- Puzzles are currently picked at random with repeats, and the warm-up,
-  practice and final sets are not kept separate. Before the real study,
-  selection needs to be changed so that each participant sees 32 different
-  puzzles.
+- Each participant only gets puzzles from their own rating category. With 4
+  puzzles per theme, practice blocks (3 per theme) never repeat a puzzle, but
+  the 10-puzzle checks (5 per theme) repeat one of each, and the same puzzle
+  can appear in several blocks. The warm-up, practice and final sets are not
+  kept separate yet. Before the real study, each participant should see 32
+  different puzzles.
 - The coach shows one of three generic questions instead of a question
   written for each puzzle.
 - `is_demo` is always `1`, so all data collected so far is demo data.
