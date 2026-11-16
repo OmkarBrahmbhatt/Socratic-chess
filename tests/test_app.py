@@ -217,6 +217,14 @@ class StudyFlowTests(unittest.TestCase):
         )
         complete = self.client.get("/complete")
         self.assertIn(b"Thanks, you're finished!", complete.data)
+        # Results: the first warm-up puzzle was solved, everything else skipped.
+        page = complete.get_data(as_text=True)
+        self.assertIn("How you did", page)
+        self.assertIn("<strong>1</strong> / 10", page)
+        self.assertIn("<strong>0</strong> / 10", page)
+        self.assertIn("1 fewer", page)
+        self.assertEqual(page.count("View on Lichess"), 20)
+        self.assertIn(first_puzzle["solution_notation"], page)
 
         with sqlite3.connect(self.database) as db:
             participant = db.execute(

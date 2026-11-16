@@ -635,9 +635,62 @@ def create_app(test_config=None):
     def complete():
         if session.get("phase") != "complete":
             return redirect(url_for("home"))
-        return render_template("complete.html", player_code=session["player_code"])
+        return render_template(
+            "complete.html",
+            player_code=session["player_code"],
+            results=_check_results(session["player_code"]),
+        )
 
     return app
+
+
+def _check_results(player_code):
+    """Score the warm-up and final checks for the results page.
+
+    A puzzle counts as solved when the participant's move matched the answer.
+    Skipped puzzles count as not solved.
+    """
+    rows = get_db().execute(
+        "SELECT a.phase, a.puzzle_number, a.puzzle_id, a.theme, a.solved, a.skipped, "
+        "(SELECT m.move_uci FROM move_events m "
+        " WHERE m.attempt_id = a.id AND m.move_number = 1) AS first_move "
+        "FROM puzzle_attempts a "
+        "WHERE a.player_code = ? AND a.phase IN ('warmup', 'final') "
+        "ORDER BY a.puzzle_number",
+        (player_code,),
+    ).fetchall()
+    results = {}
+    for phase in ("warmup", "final"):
+        puzzles = []
+        for row in rows:
+            if row["phase"] != phase:
+                continue
+            puzzle = PUZZLES.get(row["puzzle_id"], {})
+            first_move = row["first_move"]
+            puzzles.append(
+                {
+                    "number": row["puzzle_number"],
+                    "theme": row["theme"],
+                    "solved": row["solved"] == 1,
+                    "skipped": bool(row["skipped"]),
+                    "your_move": f"{first_move[:2]} to {first_move[2:4]}" if first_move else None,
+                    "answer": puzzle.get("solution_notation"),
+                    "source": puzzle.get("source"),
+                }
+            )
+        themes = {}
+        for theme in ("Forks", "Pins"):
+            themed = [p for p in puzzles if p["theme"] == theme]
+            themes[theme] = {"solved": sum(p["solved"] for p in themed), "total": len(themed)}
+        results[phase] = {
+            "title": PHASES[phase]["title"],
+            "solved": sum(p["solved"] for p in puzzles),
+            "total": len(puzzles),
+            "themes": themes,
+            "puzzles": puzzles,
+        }
+    results["change"] = results["final"]["solved"] - results["warmup"]["solved"]
+    return results
 
 
 def _validated_elapsed(value):

@@ -11,6 +11,61 @@
       <p class="eyebrow">All three parts done</p>
       <h1>Thanks, you're finished!</h1>
       <p class="intro">Your responses have been saved under player code <strong>{{ player_code }}</strong>.</p>
+
+      <h2>How you did</h2>
+      <div class="result-cards">
+        {% for phase in ("warmup", "final") %}
+          {% set result = results[phase] %}
+          <section class="result-card">
+            <h3>{{ result.title }}</h3>
+            <p class="result-score"><strong>{{ result.solved }}</strong> / {{ result.total }}</p>
+            <p class="result-themes">
+              {% for theme, score in result.themes.items() %}
+                {{ theme }} {{ score.solved }}/{{ score.total }}{% if not loop.last %} · {% endif %}
+              {% endfor %}
+            </p>
+          </section>
+        {% endfor %}
+      </div>
+      <p class="result-change">
+        {% if results.change > 0 %}
+          You solved <strong>{{ results.change }} more</strong> in the final check than in the warm-up.
+        {% elif results.change < 0 %}
+          You solved <strong>{{ -results.change }} fewer</strong> in the final check than in the warm-up.
+        {% else %}
+          You solved the <strong>same number</strong> in the warm-up and the final check.
+        {% endif %}
+        The two checks used different puzzles of the same difficulty.
+      </p>
+
+      {% for phase in ("warmup", "final") %}
+        {% set result = results[phase] %}
+        <details class="result-details">
+          <summary>{{ result.title }}: puzzle by puzzle</summary>
+          <div class="result-table-wrap">
+            <table class="result-table">
+              <thead>
+                <tr><th>#</th><th>Theme</th><th>Result</th><th>Your move</th><th>Answer</th><th></th></tr>
+              </thead>
+              <tbody>
+                {% for puzzle in result.puzzles %}
+                  <tr>
+                    <td>{{ puzzle.number }}</td>
+                    <td>{{ puzzle.theme }}</td>
+                    <td class="{{ 'result-right' if puzzle.solved else 'result-wrong' }}">
+                      {% if puzzle.solved %}✓ Solved{% elif puzzle.skipped %}Skipped{% else %}✗ Missed{% endif %}
+                    </td>
+                    <td>{{ puzzle.your_move or "—" }}</td>
+                    <td>{{ puzzle.answer or "—" }}</td>
+                    <td>{% if puzzle.source %}<a href="{{ puzzle.source }}" target="_blank" rel="noopener">View on Lichess</a>{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
+
       <p class="study-note">The puzzles in this study came from the Lichess open puzzle database.</p>
     </main>
   </body>
