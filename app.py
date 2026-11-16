@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flask import Flask, current_app, g, jsonify, redirect, render_template, request, session, url_for
 
-from puzzles import PUZZLES, puzzle_slots
+from puzzles import PUZZLES, build_schedule
 
 
 PHASES = {
@@ -120,15 +120,6 @@ QUESTION_PROMPTS = (
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-
-
-def build_schedule(rating):
-    return {
-        "warmup": puzzle_slots(10, rating, shuffle=True),
-        "practice_question": puzzle_slots(6, rating, shuffle=True),
-        "practice_answer": puzzle_slots(6, rating, shuffle=True),
-        "final": puzzle_slots(10, rating, shuffle=True),
-    }
 
 
 def _postgres_schema():
@@ -307,7 +298,7 @@ def create_app(test_config=None):
                     puzzle_id,
                     puzzle["theme"],
                     phase_info["condition"],
-                    1,
+                    int(bool(puzzle.get("demo"))),
                     utc_now(),
                 ),
             )
@@ -331,7 +322,8 @@ def create_app(test_config=None):
             condition=phase_info["condition"],
             attempt_id=attempt_id,
             phase_progress=(index + 1) / phase_info["count"] * 100,
-            question_prompt=QUESTION_PROMPTS[(index // 2) % len(QUESTION_PROMPTS)],
+            question_prompt=puzzle.get("question")
+            or QUESTION_PROMPTS[(index // 2) % len(QUESTION_PROMPTS)],
         )
 
     @app.post("/move")

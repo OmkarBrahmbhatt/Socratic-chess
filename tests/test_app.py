@@ -77,9 +77,24 @@ class StudyFlowTests(unittest.TestCase):
                     all(PUZZLES[puzzle_id]["rating_band"] == band for puzzle_id in puzzle_ids),
                     f"{band} {phase} got puzzles from another category",
                 )
-            # Practice blocks need 3 of each theme and every category has 4.
-            self.assertEqual(len(set(schedule["practice_question"])), 6)
-            self.assertEqual(len(set(schedule["practice_answer"])), 6)
+            # A participant never sees the same puzzle twice.
+            all_ids = [puzzle_id for puzzle_ids in schedule.values() for puzzle_id in puzzle_ids]
+            self.assertEqual(len(all_ids), 32)
+            self.assertEqual(len(set(all_ids)), 32, band)
+            # Each phase draws from its own fixed set.
+            for phase, expected_set in (
+                ("warmup", "warmup"),
+                ("practice_question", "practice"),
+                ("practice_answer", "practice"),
+                ("final", "final"),
+            ):
+                self.assertEqual({PUZZLES[i]["set"] for i in schedule[phase]}, {expected_set})
+
+    def test_practice_puzzles_are_split_at_random_between_conditions(self):
+        seen_as_question = set()
+        for _ in range(60):
+            seen_as_question.update(build_schedule(1200)["practice_question"])
+        self.assertEqual(len(seen_as_question), 12)
 
     def test_puzzles_are_well_formed(self):
         squares = {f"{file}{rank}" for file in "abcdefgh" for rank in "12345678"}
@@ -89,7 +104,13 @@ class StudyFlowTests(unittest.TestCase):
             self.assertIn(puzzle["fen"].split()[1], ("w", "b"), puzzle_id)
             self.assertIn(puzzle["solution"][:2], squares, puzzle_id)
             self.assertIn(puzzle["solution"][2:4], squares, puzzle_id)
-            self.assertEqual(len(puzzle["hints"]), 3, puzzle_id)
+            self.assertIn(puzzle["set"], ("warmup", "practice", "final"), puzzle_id)
+            self.assertIn(puzzle["last_move"][:2], squares, puzzle_id)
+            self.assertTrue(puzzle["source"].startswith("https://lichess.org/training/"), puzzle_id)
+            if puzzle["set"] == "practice":
+                self.assertTrue(puzzle["question"].endswith("?"), puzzle_id)
+                self.assertEqual(len(puzzle["hints"]), 3, puzzle_id)
+        self.assertEqual(len(PUZZLES), 288)
 
     def test_schedule_balances_themes_and_phase_counts(self):
         schedule = build_schedule(1200)
@@ -216,7 +237,7 @@ class StudyFlowTests(unittest.TestCase):
 
         self.assertEqual(participant, (1200, "1200-1400"))
         self.assertEqual(len(attempts), 32)
-        self.assertTrue(all(attempt[3] == 1 for attempt in attempts))
+        self.assertTrue(all(attempt[3] == 0 for attempt in attempts))
         self.assertTrue(all(attempt[2] >= 0 for attempt in attempts))
         self.assertEqual(len(move_events), 5)
         self.assertEqual(move_events[0], (3200, 3200, 1))

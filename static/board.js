@@ -6,6 +6,10 @@ const boardEl = document.querySelector("#board");
 
 if (study && boardEl) {
   const startFen = boardEl.dataset.fen;
+  // The opponent's move that led to this position, e.g. "d3e4", shown as a highlight.
+  const opponentMove = boardEl.dataset.lastMove
+    ? [boardEl.dataset.lastMove.slice(0, 2), boardEl.dataset.lastMove.slice(2, 4)]
+    : undefined;
   const startedAt = performance.now();
   let lastMoveAt = startedAt;
   let locked = false;
@@ -41,6 +45,7 @@ if (study && boardEl) {
     orientation: colorOf(chess),
     turnColor: colorOf(chess),
     check: chess.inCheck(),
+    lastMove: opponentMove,
     coordinates: true,
     animation: { enabled: true, duration: 200 },
     highlight: { lastMove: true, check: true },
@@ -62,7 +67,7 @@ if (study && boardEl) {
       fen: startFen,
       turnColor: colorOf(chess),
       check: chess.inCheck(),
-      lastMove: undefined,
+      lastMove: opponentMove,
       movable: { color: locked ? undefined : colorOf(chess), dests: legalDests(chess) },
     });
   };

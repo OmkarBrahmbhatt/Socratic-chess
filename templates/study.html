@@ -46,11 +46,11 @@
               id="board"
               class="lichess-board"
               data-fen="{{ puzzle.fen }}"
+              data-last-move="{{ puzzle.last_move or '' }}"
               role="group"
               aria-label="Chessboard, {{ 'white' if side_to_move == 'w' else 'black' }} to move"
             ></div>
           </div>
-          <p class="demo-note">Demo position only — puzzle positions will be added later.</p>
         </div>
 
         <aside class="coach-panel">
@@ -66,14 +66,12 @@
             <div class="coach-message question">
               <span class="coach-kicker">QUESTION-BASED PRACTICE</span>
               <p class="coach-question">{{ question_prompt }}</p>
-              <p>{{ puzzle.prompt }}</p>
             </div>
             <p id="move-feedback" class="feedback" aria-live="polite">Try a move on the board.</p>
             <button type="button" class="button secondary" id="hint-button">Show next hint</button>
           {% else %}
             <div class="coach-message answer">
               <span class="coach-kicker">ANSWER-BASED PRACTICE</span>
-              <p>{{ puzzle.prompt }}</p>
               <p>After your first attempt, choose Retry or Show answer.</p>
             </div>
             <p id="move-feedback" class="feedback" aria-live="polite">Try a move on the board.</p>
@@ -101,7 +99,7 @@
       </section>
 
       <p class="study-footnote">
-        This is a demo study flow. The board and answers are placeholders, not real study puzzles.
+        Puzzles are from the Lichess open puzzle database. The highlighted squares show your opponent's last move.
       </p>
     </main>
   </body>
