@@ -1,5 +1,7 @@
 # Socratic Chess
 
+**Live study:** https://socratic-chess.onrender.com/
+
 A web app for a research study comparing two ways of practising chess tactics:
 
 - **Question-based coaching:** the coach asks guiding questions and gives
@@ -95,6 +97,10 @@ study data. Use a separate Neon branch for development.
 Never commit real values for either variable.
 
 ## Deploying on Render
+
+The live instance runs at https://socratic-chess.onrender.com/. On Render's
+free plan the service sleeps after a period with no visitors, so the first
+page load after that can take up to a minute.
 
 1. Create a **Web Service** from this repository.
 2. **Build command:** `pip install -r requirements.txt`
