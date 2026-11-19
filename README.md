@@ -1,8 +1,43 @@
 # Socratic Chess
 
-**Live study:** https://socratic-chess.onrender.com/
+Does it help more when a chess coach **asks you questions** or when it simply
+**shows you the answer**? Socratic Chess is a web app for a research study
+that compares the two ways of practising chess tactics.
 
-A web app for a research study comparing two ways of practising chess tactics:
+## 🎯 Try our platform
+
+### 👉 [socratic-chess.onrender.com](https://socratic-chess.onrender.com/)
+
+Play through the study in your browser. There is nothing to install and no
+account to create.
+
+**What you'll do**
+
+1. Pick your chess rating range, from *Below 400* up to *2000+*.
+2. **Warm-up check:** solve 10 puzzles with no hints.
+3. **Practice:** solve 12 puzzles with two different coaches. One asks guiding
+   questions and gives hints; the other lets you retry or reveal the answer.
+4. **Final check:** solve 10 more puzzles with no hints.
+5. Answer a few short questions about how each coach felt.
+
+**What you get:** at the end you see your warm-up and final scores side by
+side, how you did on forks and pins, and every puzzle's answer with a link to
+it on Lichess.
+
+**Good to know**
+
+- It takes about **45 minutes**. You must be **18 or older** to take part.
+- A laptop or desktop makes the board easier to use.
+- All puzzles are real positions from the
+  [Lichess open puzzle database](https://database.lichess.org/#puzzles),
+  matched to the rating range you choose.
+- We don't ask for your name or email. You get a random player code, and only
+  your rating range, moves, timings and survey answers are saved under it.
+- The site may take up to a minute to load if nobody has visited for a while.
+
+## About the study
+
+The app compares two coaching styles:
 
 - **Question-based coaching:** the coach asks guiding questions and gives
   step-by-step hints.
