@@ -39,10 +39,14 @@ class StudyFlowTests(unittest.TestCase):
         )
 
     def participant_row(self):
+        """The participant row for whoever is signed in to the test client."""
+        with self.client.session_transaction() as browser_session:
+            player_code = browser_session["player_code"]
         with sqlite3.connect(self.database) as db:
             return db.execute(
                 "SELECT rating, rating_band, rating_system, experience, puzzle_band "
-                "FROM participants ORDER BY created_at DESC LIMIT 1"
+                "FROM participants WHERE player_code = ?",
+                (player_code,),
             ).fetchone()
 
     def current_schedule(self):
@@ -105,15 +109,18 @@ class StudyFlowTests(unittest.TestCase):
             self.assertEqual(self.start_study(rating_band=band).status_code, 302)
 
     def test_reported_rating_is_converted_to_a_puzzle_category(self):
+        # Participants get puzzles one category above their estimated level.
         cases = [
             # (system, reported range, expected puzzle category)
-            ("lichess_puzzles", "1200-1400", "1200-1400"),
-            ("lichess_rapid", "1400-1600", "1400-1600"),
-            ("fide", "1400-1600", "1400-1600"),
-            ("chesscom_rapid", "800-1000", "1200-1400"),
-            ("chesscom_blitz", "400-800", "1200-1400"),
-            ("uscf", "1000-1200", "1400-1600"),
-            ("national", "1800-2000", "2000+"),
+            ("lichess_puzzles", "Below 400", "400-800"),
+            ("lichess_puzzles", "1200-1400", "1400-1600"),
+            ("lichess_rapid", "1400-1600", "1600-1800"),
+            ("fide", "1400-1600", "1600-1800"),
+            ("chesscom_rapid", "800-1000", "1400-1600"),
+            ("chesscom_blitz", "400-800", "1400-1600"),
+            ("uscf", "1000-1200", "1600-1800"),
+            ("national", "1800-2000", "2000+"),  # already top: stays there
+            ("lichess_puzzles", "2000+", "2000+"),
         ]
         for system, band, expected in cases:
             response = self.start_study(rating_system=system, rating_band=band)
@@ -123,16 +130,18 @@ class StudyFlowTests(unittest.TestCase):
             self.assertEqual(puzzle_band, expected, f"{system} {band}")
             schedule = self.current_schedule()
             first = PUZZLES[schedule["warmup"][0]]
-            self.assertEqual(first["rating_band"], expected, f"{system} {band}")
-            self.assertTrue(first["rating_min"] <= rating <= first["rating_max"])
+            self.assertTrue(
+                all(PUZZLES[i]["rating_band"] == expected for ids in schedule.values() for i in ids),
+                f"{system} {band}",
+            )
 
     def test_participant_without_rating_describes_their_experience(self):
         response = self.start_study(rating_system="none", rating_band="", experience="casual")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(self.participant_row(), (1100, None, "none", "casual", "1000-1200"))
+        self.assertEqual(self.participant_row(), (1100, None, "none", "casual", "1200-1400"))
         # A stray range from the hidden question is ignored.
         self.start_study(rating_system="none", rating_band="2000+", experience="new")
-        self.assertEqual(self.participant_row(), (300, None, "none", "new", "Below 400"))
+        self.assertEqual(self.participant_row(), (300, None, "none", "new", "400-800"))
 
     def test_conversion_table_is_monotonic(self):
         from ratings import COMPARISON, RATING_SYSTEMS, puzzle_scale_rating
@@ -331,7 +340,7 @@ class StudyFlowTests(unittest.TestCase):
                 "SELECT stage, preference, explanation FROM survey_responses"
             ).fetchall()
 
-        self.assertEqual(participant, (1300, "1200-1400", "lichess_puzzles", "1200-1400"))
+        self.assertEqual(participant, (1300, "1200-1400", "lichess_puzzles", "1400-1600"))
         self.assertEqual(len(attempts), 32)
         self.assertTrue(all(attempt[3] == 0 for attempt in attempts))
         self.assertTrue(all(attempt[2] >= 0 for attempt in attempts))

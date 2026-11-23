@@ -35,7 +35,7 @@
       <section class="consent-list">
         <h2>Before you start</h2>
         <ul>
-          <li>The puzzles come from the Lichess open puzzle database. We match them to your level using the rating you tell us. Ratings from other sites and federations are converted approximately.</li>
+          <li>The puzzles come from the Lichess open puzzle database. We pick them to be a little above your level, using the rating you tell us. Ratings from other sites and federations are converted approximately.</li>
           <li>Participation is voluntary. You can stop at any time by closing this page.</li>
           <li>We do not ask for your name. Your rating answers, moves, timing, and survey answers are stored under a random player code in the study database.</li>
         </ul>
@@ -48,7 +48,7 @@
       <form method="post" action="{{ url_for('start_study') }}">
         <div class="start-field">
           <label for="rating_system">Which chess rating do you have?</label>
-          <p class="field-help" id="rating-system-help">If you have more than one, choose the one you play most. Puzzles are matched to your level using this.</p>
+          <p class="field-help" id="rating-system-help">If you have more than one, choose the one you play most. We use it to pick puzzles a little above your level.</p>
           <select id="rating_system" name="rating_system" aria-describedby="rating-system-help" required>
             <option value="" disabled {% if not rating_system %}selected{% endif %}>Choose a rating</option>
             {% for group, systems in rating_system_groups %}

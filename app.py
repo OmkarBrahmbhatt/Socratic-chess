@@ -12,8 +12,8 @@ from ratings import (
     NO_RATING,
     RATING_BANDS,
     RATING_SYSTEMS,
-    band_for,
     grouped_systems,
+    puzzle_band_for,
     puzzle_scale_rating,
 )
 
@@ -274,9 +274,10 @@ def create_app(test_config=None):
             rating_band, experience = answers["rating_band"], None
         if request.form.get("consent") != "yes":
             return start_page("Please confirm the study consent before continuing.", 400, **answers)
-        # The estimate on the Lichess puzzle scale picks the puzzles.
+        # The estimate on the Lichess puzzle scale, moved up DIFFICULTY_STEP
+        # categories, picks the puzzles.
         rating = puzzle_scale_rating(rating_system, rating_band, experience)
-        puzzle_band = band_for(rating)
+        puzzle_band = puzzle_band_for(rating)
 
         db = get_db()
         player_code = f"P-{secrets.token_hex(3).upper()}"
@@ -296,7 +297,7 @@ def create_app(test_config=None):
         session.update(
             player_code=player_code,
             rating=rating,
-            schedule=build_schedule(rating),
+            schedule=build_schedule(RATING_BANDS[puzzle_band]),
             phase="warmup",
             puzzle_index=0,
         )

@@ -100,6 +100,11 @@ COMPARISON = [
 # ratings harder puzzles. Lichess puzzle ratings are never offset.
 PUZZLE_SCALE_OFFSET = 0
 
+# How many categories above their estimated level participants are placed,
+# so the puzzles are a little harder than their rating suggests. 0 matches
+# the estimate exactly. Players already in the top category stay there.
+DIFFICULTY_STEP = 1
+
 # For participants without a rating: key -> (description, estimated
 # puzzle-scale rating). These estimates are judgement calls, not data.
 EXPERIENCE_LEVELS = {
@@ -159,3 +164,10 @@ def puzzle_scale_rating(system, rating_band=None, experience=None):
 def band_for(rating):
     """The puzzle category a puzzle-scale rating falls in."""
     return max((band for band, low in RATING_BANDS.items() if low <= rating), key=RATING_BANDS.get)
+
+
+def puzzle_band_for(rating):
+    """The category a participant gets: their own, moved up by DIFFICULTY_STEP."""
+    bands = list(RATING_BANDS)
+    index = bands.index(band_for(rating)) + DIFFICULTY_STEP
+    return bands[max(0, min(index, len(bands) - 1))]

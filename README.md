@@ -14,7 +14,8 @@ account to create.
 **What you'll do**
 
 1. Tell us which chess rating you have (FIDE, US Chess, Chess.com, Lichess, or
-   none at all) and roughly what it is. Puzzles are matched to your level.
+   none at all) and roughly what it is. Puzzles are picked to be a little
+   above your level.
 2. **Warm-up check:** solve 10 puzzles with no hints.
 3. **Practice:** solve 12 puzzles with two different coaches. One asks guiding
    questions and gives hints; the other lets you retry or reveal the answer.
@@ -105,17 +106,23 @@ and that estimate decides the puzzle category. All conversion rules are in
 - **Lichess puzzle ratings** are already on the puzzle scale and are used as is.
 - **No rating:** each description has a fixed estimate (for example *I play
   casually* = 1100). These are judgement calls, not data.
+- **One category harder:** participants are then placed **one category above**
+  their estimated level, so the puzzles stretch them. Players whose estimate is
+  already in the top category (2000+) stay there. The step is
+  `DIFFICULTY_STEP` in `ratings.py`; set it to `0` to match the estimate
+  exactly.
 
 Some examples:
 
-| Participant says | Gets puzzles from |
-|---|---|
-| Lichess Puzzles 1200-1400 | 1200-1400 |
-| FIDE 1400-1600 | 1400-1600 |
-| Chess.com Rapid 800-1000 | 1200-1400 |
-| Chess.com Blitz 400-800 | 1200-1400 |
-| US Chess 1000-1200 | 1400-1600 |
-| No rating, "I play casually" | 1000-1200 |
+| Participant says | Estimated level | Gets puzzles from |
+|---|---|---|
+| Lichess Puzzles 1200-1400 | 1200-1400 | 1400-1600 |
+| FIDE 1400-1600 | 1400-1600 | 1600-1800 |
+| Chess.com Rapid 800-1000 | 1200-1400 | 1400-1600 |
+| Chess.com Blitz 400-800 | 1200-1400 | 1400-1600 |
+| US Chess 1000-1200 | 1400-1600 | 1600-1800 |
+| No rating, "I play casually" | 1000-1200 | 1200-1400 |
+| No rating, "I'm new to chess" | Below 400 | 400-800 |
 
 **Known limits:**
 
@@ -126,6 +133,11 @@ Some examples:
   reliable figure exists, so game ratings get no extra puzzle offset. If
   puzzles turn out too easy for those players, raise `PUZZLE_SCALE_OFFSET` in
   `ratings.py`.
+- With the one-category step, nobody is placed in *Below 400*: the newest
+  players start at 400-800. The *Below 400* puzzles stay in the data and are
+  used again if `DIFFICULTY_STEP` is set to `0`.
+- Many strong players end up in 2000+, the top category, because there is no
+  harder one. Its puzzles are rated 2011-2387.
 - Chess.com puzzle ratings are not offered: they are known to differ a lot from
   game ratings, and no comparison data was found.
 
@@ -209,7 +221,7 @@ names or contact details are collected.
 
 | Table | One row per | Contents |
 |---|---|---|
-| `participants` | participant | `player_code`; `rating_system` (e.g. `fide`, `chesscom_rapid`, or `none`); `rating_band` (the range they chose, in their own system; empty for `none`); `experience` (their description, only for `none`); `puzzle_band` (the puzzle category they got); `rating` (the estimated puzzle-scale rating used to pick puzzles); consent time |
+| `participants` | participant | `player_code`; `rating_system` (e.g. `fide`, `chesscom_rapid`, or `none`); `rating_band` (the range they chose, in their own system; empty for `none`); `experience` (their description, only for `none`); `puzzle_band` (the puzzle category they got); `rating` (the estimated puzzle-scale rating, before the one-category step); consent time |
 | `puzzle_attempts` | puzzle slot (32 per participant) | phase, puzzle number, puzzle ID (the Lichess ID), theme, condition, solved, skipped, time spent, `is_demo` (`1` for attempts made on the earlier placeholder puzzles, `0` for real puzzles) |
 | `move_events` | move | move in UCI format (e.g. `e5f7`), whether it was correct, time for the move and time since the puzzle started |
 | `interaction_events` | button click | `hint_shown`, `retry_clicked` or `answer_shown`, with timing |
