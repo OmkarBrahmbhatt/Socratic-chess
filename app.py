@@ -7,6 +7,15 @@ from pathlib import Path
 from flask import Flask, current_app, g, jsonify, redirect, render_template, request, session, url_for
 
 from puzzles import PUZZLES, build_schedule
+from ratings import (
+    EXPERIENCE_LEVELS,
+    NO_RATING,
+    RATING_BANDS,
+    RATING_SYSTEMS,
+    band_for,
+    grouped_systems,
+    puzzle_scale_rating,
+)
 
 
 PHASES = {
@@ -28,19 +37,13 @@ PRACTICE_SURVEYS = {
     "survey_answer": "answer",
 }
 MAX_ELAPSED_MS = 24 * 60 * 60 * 1000
-# Rating categories shown on the start page. The value is stored as
-# participants.rating_band; participants.rating holds the band's lower bound
-# and is used for puzzle selection.
-RATING_BANDS = {
-    "Below 400": 0,
-    "400-800": 400,
-    "800-1000": 800,
-    "1000-1200": 1000,
-    "1200-1400": 1200,
-    "1400-1600": 1400,
-    "1600-1800": 1600,
-    "1800-2000": 1800,
-    "2000+": 2000,
+# Columns added to participants after the first release, with their types.
+# They are added automatically to existing databases on startup.
+PARTICIPANT_COLUMNS = {
+    "rating_band": "TEXT",
+    "rating_system": "TEXT",
+    "experience": "TEXT",
+    "puzzle_band": "TEXT",
 }
 
 SCHEMA = """
@@ -48,6 +51,9 @@ CREATE TABLE IF NOT EXISTS participants (
     player_code TEXT PRIMARY KEY,
     rating INTEGER NOT NULL,
     rating_band TEXT,
+    rating_system TEXT,
+    experience TEXT,
+    puzzle_band TEXT,
     consented_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -169,9 +175,18 @@ def _init_postgres(url):
         # Serialize schema creation across gunicorn workers starting at once.
         connection.execute("SELECT pg_advisory_xact_lock(724181)")
         connection.execute(_postgres_schema())
-        connection.execute(
-            "ALTER TABLE participants ADD COLUMN IF NOT EXISTS rating_band TEXT"
-        )
+        for column, kind in PARTICIPANT_COLUMNS.items():
+            connection.execute(
+                f"ALTER TABLE participants ADD COLUMN IF NOT EXISTS {column} {kind}"
+            )
+        connection.execute(_BACKFILL_PUZZLE_BAND)
+
+
+# Before rating systems were asked, the chosen range was also the puzzle range.
+_BACKFILL_PUZZLE_BAND = (
+    "UPDATE participants SET puzzle_band = rating_band "
+    "WHERE puzzle_band IS NULL AND rating_system IS NULL AND rating_band IS NOT NULL"
+)
 
 
 def _connect_db():
@@ -213,35 +228,55 @@ def create_app(test_config=None):
         try:
             connection.executescript(SCHEMA)
             columns = {row[1] for row in connection.execute("PRAGMA table_info(participants)")}
-            if "rating_band" not in columns:
-                connection.execute("ALTER TABLE participants ADD COLUMN rating_band TEXT")
-                connection.commit()
+            for column, kind in PARTICIPANT_COLUMNS.items():
+                if column not in columns:
+                    connection.execute(f"ALTER TABLE participants ADD COLUMN {column} {kind}")
+            connection.execute(_BACKFILL_PUZZLE_BAND)
+            connection.commit()
         finally:
             connection.close()
     app.teardown_appcontext(close_db)
 
+    def start_page(error=None, status=200, **answers):
+        return render_template(
+            "index.html",
+            error=error,
+            rating_system_groups=grouped_systems(),
+            no_rating=NO_RATING,
+            rating_bands=RATING_BANDS,
+            experience_levels=EXPERIENCE_LEVELS,
+            rating_system=answers.get("rating_system", ""),
+            rating_band=answers.get("rating_band", ""),
+            experience=answers.get("experience", ""),
+        ), status
+
     @app.get("/")
     def home():
-        return render_template("index.html", error=None, rating_band="", rating_bands=RATING_BANDS)
+        return start_page()
 
     @app.post("/")
     def start_study():
-        rating_band = request.form.get("rating_band", "").strip()
-        if rating_band not in RATING_BANDS:
-            return render_template(
-                "index.html",
-                error="Choose your rating category.",
-                rating_band=rating_band,
-                rating_bands=RATING_BANDS,
-            ), 400
-        rating = RATING_BANDS[rating_band]
+        answers = {
+            "rating_system": request.form.get("rating_system", "").strip(),
+            "rating_band": request.form.get("rating_band", "").strip(),
+            "experience": request.form.get("experience", "").strip(),
+        }
+        rating_system = answers["rating_system"]
+        if rating_system != NO_RATING and rating_system not in RATING_SYSTEMS:
+            return start_page("Choose which chess rating you have.", 400, **answers)
+        if rating_system == NO_RATING:
+            if answers["experience"] not in EXPERIENCE_LEVELS:
+                return start_page("Choose the description that fits you best.", 400, **answers)
+            rating_band, experience = None, answers["experience"]
+        else:
+            if answers["rating_band"] not in RATING_BANDS:
+                return start_page("Choose your rating range.", 400, **answers)
+            rating_band, experience = answers["rating_band"], None
         if request.form.get("consent") != "yes":
-            return render_template(
-                "index.html",
-                error="Please confirm the study consent before continuing.",
-                rating_band=rating_band,
-                rating_bands=RATING_BANDS,
-            ), 400
+            return start_page("Please confirm the study consent before continuing.", 400, **answers)
+        # The estimate on the Lichess puzzle scale picks the puzzles.
+        rating = puzzle_scale_rating(rating_system, rating_band, experience)
+        puzzle_band = band_for(rating)
 
         db = get_db()
         player_code = f"P-{secrets.token_hex(3).upper()}"
@@ -252,9 +287,9 @@ def create_app(test_config=None):
         now = utc_now()
         db.execute(
             "INSERT INTO participants "
-            "(player_code, rating, rating_band, consented_at, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (player_code, rating, rating_band, now, now),
+            "(player_code, rating, rating_band, rating_system, experience, puzzle_band, "
+            "consented_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (player_code, rating, rating_band, rating_system, experience, puzzle_band, now, now),
         )
         db.commit()
         session.clear()

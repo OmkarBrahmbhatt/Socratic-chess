@@ -35,9 +35,9 @@
       <section class="consent-list">
         <h2>Before you start</h2>
         <ul>
-          <li>The puzzles come from the Lichess open puzzle database and are matched to the rating range you choose.</li>
+          <li>The puzzles come from the Lichess open puzzle database. We match them to your level using the rating you tell us. Ratings from other sites and federations are converted approximately.</li>
           <li>Participation is voluntary. You can stop at any time by closing this page.</li>
-          <li>We do not ask for your name. Your rating range, moves, timing, and answers are stored under a random player code in the study database.</li>
+          <li>We do not ask for your name. Your rating answers, moves, timing, and survey answers are stored under a random player code in the study database.</li>
         </ul>
       </section>
 
@@ -46,12 +46,38 @@
       {% endif %}
 
       <form method="post" action="{{ url_for('start_study') }}">
-        <label for="rating_band">What is your chess rating?</label>
-        <div class="form-row">
-          <select id="rating_band" name="rating_band" required>
+        <div class="start-field">
+          <label for="rating_system">Which chess rating do you have?</label>
+          <p class="field-help" id="rating-system-help">If you have more than one, choose the one you play most. Puzzles are matched to your level using this.</p>
+          <select id="rating_system" name="rating_system" aria-describedby="rating-system-help" required>
+            <option value="" disabled {% if not rating_system %}selected{% endif %}>Choose a rating</option>
+            {% for group, systems in rating_system_groups %}
+              <optgroup label="{{ group }}">
+                {% for key, label, short in systems %}
+                  <option value="{{ key }}" data-short="{{ short }}" {% if key == rating_system %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+            <option value="{{ no_rating }}" {% if rating_system == no_rating %}selected{% endif %}>I don't have a rating</option>
+          </select>
+        </div>
+
+        <div class="start-field" id="rated-fields">
+          <label for="rating_band" id="rating-band-label">What is your rating?</label>
+          <select id="rating_band" name="rating_band">
             <option value="" disabled {% if not rating_band %}selected{% endif %}>Choose a rating range</option>
             {% for band in rating_bands %}
               <option value="{{ band }}" {% if band == rating_band %}selected{% endif %}>{{ band }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="start-field" id="unrated-fields">
+          <label for="experience">Which best describes you?</label>
+          <select id="experience" name="experience">
+            <option value="" disabled {% if not experience %}selected{% endif %}>Choose a description</option>
+            {% for key, level in experience_levels.items() %}
+              <option value="{{ key }}" {% if key == experience %}selected{% endif %}>{{ level[0] }}</option>
             {% endfor %}
           </select>
         </div>
@@ -63,5 +89,6 @@
         <span class="desktop-tip">Tip: a laptop or desktop makes the board easier to use.</span>
       </form>
     </main>
+    <script src="{{ url_for('static', filename='start.js') }}"></script>
   </body>
 </html>

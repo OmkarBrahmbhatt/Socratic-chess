@@ -24,12 +24,26 @@ class StudyFlowTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def start_study(self, rating_band="1200-1400", consent="yes"):
+    def start_study(
+        self, rating_band="1200-1400", consent="yes", rating_system="lichess_puzzles", experience=""
+    ):
         return self.client.post(
             "/",
-            data={"rating_band": rating_band, "consent": consent},
+            data={
+                "rating_system": rating_system,
+                "rating_band": rating_band,
+                "experience": experience,
+                "consent": consent,
+            },
             follow_redirects=False,
         )
+
+    def participant_row(self):
+        with sqlite3.connect(self.database) as db:
+            return db.execute(
+                "SELECT rating, rating_band, rating_system, experience, puzzle_band "
+                "FROM participants ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
 
     def current_schedule(self):
         with self.client.session_transaction() as browser_session:
@@ -58,16 +72,90 @@ class StudyFlowTests(unittest.TestCase):
         self.assertIn(b'<option value="Below 400"', response.data)
         self.assertIn(b'<option value="400-800"', response.data)
 
+        for key in ("fide", "uscf", "national", "chesscom_rapid", "lichess_puzzles", "none"):
+            self.assertIn(f'<option value="{key}"'.encode(), response.data)
+        self.assertIn(b"I don't have a rating", response.data)
+
+        missing_system = self.start_study(rating_system="")
+        self.assertEqual(missing_system.status_code, 400)
+        self.assertIn(b"Choose which chess rating you have", missing_system.data)
+
+        unknown_system = self.start_study(rating_system="elo-ish")
+        self.assertEqual(unknown_system.status_code, 400)
+        self.assertIn(b"Choose which chess rating you have", unknown_system.data)
+
         missing_band = self.start_study(rating_band="")
         self.assertEqual(missing_band.status_code, 400)
-        self.assertIn(b"Choose your rating category", missing_band.data)
+        self.assertIn(b"Choose your rating range", missing_band.data)
 
         invalid_band = self.start_study(rating_band="1300")
         self.assertEqual(invalid_band.status_code, 400)
-        self.assertIn(b"Choose your rating category", invalid_band.data)
+        self.assertIn(b"Choose your rating range", invalid_band.data)
+
+        no_description = self.start_study(rating_system="none", rating_band="")
+        self.assertEqual(no_description.status_code, 400)
+        self.assertIn(b"Choose the description that fits you best", no_description.data)
+
+        # An error keeps the participant's earlier answers selected.
+        kept = self.start_study(rating_system="fide", rating_band="1400-1600", consent="")
+        self.assertIn(b'value="fide" data-short="FIDE" selected', kept.data)
+        self.assertIn(b'value="1400-1600" selected', kept.data)
 
         for band in ("Below 400", "400-800", "2000+"):
             self.assertEqual(self.start_study(rating_band=band).status_code, 302)
+
+    def test_reported_rating_is_converted_to_a_puzzle_category(self):
+        cases = [
+            # (system, reported range, expected puzzle category)
+            ("lichess_puzzles", "1200-1400", "1200-1400"),
+            ("lichess_rapid", "1400-1600", "1400-1600"),
+            ("fide", "1400-1600", "1400-1600"),
+            ("chesscom_rapid", "800-1000", "1200-1400"),
+            ("chesscom_blitz", "400-800", "1200-1400"),
+            ("uscf", "1000-1200", "1400-1600"),
+            ("national", "1800-2000", "2000+"),
+        ]
+        for system, band, expected in cases:
+            response = self.start_study(rating_system=system, rating_band=band)
+            self.assertEqual(response.status_code, 302, system)
+            rating, rating_band, rating_system, experience, puzzle_band = self.participant_row()
+            self.assertEqual((rating_band, rating_system, experience), (band, system, None))
+            self.assertEqual(puzzle_band, expected, f"{system} {band}")
+            schedule = self.current_schedule()
+            first = PUZZLES[schedule["warmup"][0]]
+            self.assertEqual(first["rating_band"], expected, f"{system} {band}")
+            self.assertTrue(first["rating_min"] <= rating <= first["rating_max"])
+
+    def test_participant_without_rating_describes_their_experience(self):
+        response = self.start_study(rating_system="none", rating_band="", experience="casual")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.participant_row(), (1100, None, "none", "casual", "1000-1200"))
+        # A stray range from the hidden question is ignored.
+        self.start_study(rating_system="none", rating_band="2000+", experience="new")
+        self.assertEqual(self.participant_row(), (300, None, "none", "new", "Below 400"))
+
+    def test_conversion_table_is_monotonic(self):
+        from ratings import COMPARISON, RATING_SYSTEMS, puzzle_scale_rating
+        for column in range(len(COMPARISON[0])):
+            values = [row[column] for row in COMPARISON if row[column] is not None]
+            self.assertEqual(values, sorted(values), column)
+        for system in RATING_SYSTEMS:
+            estimates = [puzzle_scale_rating(system, band) for band in RATING_BANDS]
+            self.assertEqual(estimates, sorted(estimates), system)
+            self.assertTrue(all(estimate >= 0 for estimate in estimates), system)
+
+    def test_old_participants_get_their_puzzle_band_backfilled(self):
+        with sqlite3.connect(self.database) as db:
+            db.execute(
+                "INSERT INTO participants (player_code, rating, rating_band, consented_at, created_at) "
+                "VALUES ('P-OLD001', 800, '800-1000', 'x', 'x')"
+            )
+        create_app({"TESTING": True, "SECRET_KEY": "k", "DATABASE": self.database, "DATABASE_URL": None})
+        with sqlite3.connect(self.database) as db:
+            row = db.execute(
+                "SELECT rating_system, puzzle_band FROM participants WHERE player_code = 'P-OLD001'"
+            ).fetchone()
+        self.assertEqual(row, (None, "800-1000"))
 
     def test_each_rating_category_uses_its_own_puzzles(self):
         for band, rating in RATING_BANDS.items():
@@ -228,7 +316,7 @@ class StudyFlowTests(unittest.TestCase):
 
         with sqlite3.connect(self.database) as db:
             participant = db.execute(
-                "SELECT rating, rating_band FROM participants"
+                "SELECT rating, rating_band, rating_system, puzzle_band FROM participants"
             ).fetchone()
             attempts = db.execute(
                 "SELECT phase, theme, elapsed_ms, is_demo FROM puzzle_attempts"
@@ -243,7 +331,7 @@ class StudyFlowTests(unittest.TestCase):
                 "SELECT stage, preference, explanation FROM survey_responses"
             ).fetchall()
 
-        self.assertEqual(participant, (1200, "1200-1400"))
+        self.assertEqual(participant, (1300, "1200-1400", "lichess_puzzles", "1200-1400"))
         self.assertEqual(len(attempts), 32)
         self.assertTrue(all(attempt[3] == 0 for attempt in attempts))
         self.assertTrue(all(attempt[2] >= 0 for attempt in attempts))

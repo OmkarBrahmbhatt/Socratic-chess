@@ -13,7 +13,8 @@ account to create.
 
 **What you'll do**
 
-1. Pick your chess rating range, from *Below 400* up to *2000+*.
+1. Tell us which chess rating you have (FIDE, US Chess, Chess.com, Lichess, or
+   none at all) and roughly what it is. Puzzles are matched to your level.
 2. **Warm-up check:** solve 10 puzzles with no hints.
 3. **Practice:** solve 12 puzzles with two different coaches. One asks guiding
    questions and gives hints; the other lets you retry or reveal the answer.
@@ -57,7 +58,7 @@ answers to see which style of practice helps more.
 
 | Step | What happens | Puzzles | Feedback |
 |---|---|---|---|
-| Start | Participant picks a rating category and confirms they are 18+ | - | - |
+| Start | Participant says which rating they have and its range (or describes their experience), and confirms they are 18+ | - | - |
 | 1. Warm-up check | Baseline test | 10 (5 forks, 5 pins) | None: the first move counts |
 | 2a. Question-based practice | Wrong moves show a hint; a "Show next hint" button is available | 6 (3 forks, 3 pins) | Questions and hints |
 | Survey | Four 1–7 sliders: demand, rushed, success, effort | - | - |
@@ -66,14 +67,67 @@ answers to see which style of practice helps more.
 | 3. Final check | Post-test | 10 (5 forks, 5 pins) | None |
 | Final survey | Which kind of help they preferred, and why | - | - |
 
-**Rating categories:** Below 400, 400-800, 800-1000, 1000-1200, 1200-1400,
-1400-1600, 1600-1800, 1800-2000, 2000+.
+**Puzzle categories:** Below 400, 400-800, 800-1000, 1000-1200, 1200-1400,
+1400-1600, 1600-1800, 1800-2000, 2000+. These are on the Lichess puzzle rating
+scale. See [Matching puzzles to a player's level](#matching-puzzles-to-a-players-level).
 
 Fork and pin puzzles are balanced in every block, and puzzle order is
 shuffled for each participant. No participant sees the same puzzle twice. The
 12 practice puzzles are split at random between the two practice styles, so
 across participants every practice puzzle is used with both. There is no
 visible timer, but time spent on each move and each puzzle is recorded.
+
+## Matching puzzles to a player's level
+
+Ratings from different systems are not comparable: the same player can be
+several hundred points apart on FIDE, Chess.com and Lichess. The puzzles are
+graded on the Lichess puzzle scale, so the start page asks two questions:
+
+1. **Which rating do you have?** FIDE, US Chess (USCF), another national
+   federation, Chess.com Rapid or Blitz, Lichess Rapid, Blitz or Puzzles, or
+   *I don't have a rating*.
+2. **What is it?** One of the nine ranges above. Participants without a
+   rating instead pick the description that fits them best, from *new to
+   chess* to *I play in a club or in tournaments*.
+
+The answer is converted to an estimated rating on the Lichess puzzle scale,
+and that estimate decides the puzzle category. All conversion rules are in
+[`ratings.py`](ratings.py):
+
+- **Game ratings** (FIDE, USCF, Chess.com, Lichess games) are converted to
+  their Lichess rapid equivalent using the
+  [ChessGoals rating comparison](https://chessgoals.com/rating-comparison/)
+  (July 2026; built from roughly 1,000-10,000 players per system who have
+  accounts in both). The middle of the chosen range is converted, with straight
+  lines between the table's rows. Below or above the table, one point is
+  treated as one point.
+- **Other national federations** are treated like FIDE.
+- **Lichess puzzle ratings** are already on the puzzle scale and are used as is.
+- **No rating:** each description has a fixed estimate (for example *I play
+  casually* = 1100). These are judgement calls, not data.
+
+Some examples:
+
+| Participant says | Gets puzzles from |
+|---|---|
+| Lichess Puzzles 1200-1400 | 1200-1400 |
+| FIDE 1400-1600 | 1400-1600 |
+| Chess.com Rapid 800-1000 | 1200-1400 |
+| Chess.com Blitz 400-800 | 1200-1400 |
+| US Chess 1000-1200 | 1400-1600 |
+| No rating, "I play casually" | 1000-1200 |
+
+**Known limits:**
+
+- The conversions are approximate. In the source data, about half of players
+  fall within roughly ±70 to ±135 points of each equivalent, depending on the
+  system.
+- Players' puzzle ratings usually run higher than their game ratings, but no
+  reliable figure exists, so game ratings get no extra puzzle offset. If
+  puzzles turn out too easy for those players, raise `PUZZLE_SCALE_OFFSET` in
+  `ratings.py`.
+- Chess.com puzzle ratings are not offered: they are known to differ a lot from
+  game ratings, and no comparison data was found.
 
 ## Tech stack
 
@@ -90,12 +144,14 @@ visible timer, but time spent on each move and each puzzle is recorded.
 ```
 app.py              Flask app: routes, study flow, database access
 puzzles.py          Loads the puzzles and builds each participant's schedule
+ratings.py          Rating systems and conversion to a puzzle category
 puzzle_data.json    The 288 puzzles (generated; see "Puzzles" below)
 docs/puzzle_review.csv   Every puzzle, answer, question and hint, for review
 scripts/build_puzzles/   Scripts that rebuild puzzle_data.json from Lichess
 templates/          Pages: start (index), study, survey, complete
 static/board.js     Chess board and move handling
 static/study.js     Study-page interactions
+static/start.js     Start page: shows the right rating follow-up question
 static/style.css    Styles
 tests/test_app.py   End-to-end tests of the study flow
 ```
@@ -153,11 +209,16 @@ names or contact details are collected.
 
 | Table | One row per | Contents |
 |---|---|---|
-| `participants` | participant | `player_code`, `rating_band` (the chosen category), `rating` (the category's lower bound, used for puzzle selection), consent time |
+| `participants` | participant | `player_code`; `rating_system` (e.g. `fide`, `chesscom_rapid`, or `none`); `rating_band` (the range they chose, in their own system; empty for `none`); `experience` (their description, only for `none`); `puzzle_band` (the puzzle category they got); `rating` (the estimated puzzle-scale rating used to pick puzzles); consent time |
 | `puzzle_attempts` | puzzle slot (32 per participant) | phase, puzzle number, puzzle ID (the Lichess ID), theme, condition, solved, skipped, time spent, `is_demo` (`1` for attempts made on the earlier placeholder puzzles, `0` for real puzzles) |
 | `move_events` | move | move in UCI format (e.g. `e5f7`), whether it was correct, time for the move and time since the puzzle started |
 | `interaction_events` | button click | `hint_shown`, `retry_clicked` or `answer_shown`, with timing |
 | `survey_responses` | survey | slider answers (1–7), final preference and explanation |
+
+Participants who joined before the rating question was added have an empty
+`rating_system`. For them `rating_band` was also the puzzle category, so
+`puzzle_band` was filled in with the same value, and `rating` is that
+category's lower bound.
 
 `move_events.attempt_id` links to `puzzle_attempts.id`. Every other table links
 by `player_code`.
@@ -168,7 +229,8 @@ The simplest way is to run queries in the Neon **SQL Editor** and download the
 results as CSV. Example: one row per finished puzzle attempt.
 
 ```sql
-SELECT p.player_code, p.rating_band, a.phase, a.puzzle_number, a.theme,
+SELECT p.player_code, p.rating_system, p.rating_band, p.puzzle_band,
+       a.phase, a.puzzle_number, a.theme,
        a.condition, a.solved, a.skipped, a.elapsed_ms
 FROM puzzle_attempts a
 JOIN participants p USING (player_code)

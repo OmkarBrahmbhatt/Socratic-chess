@@ -207,6 +207,23 @@ a:focus-visible {
   font-size: 0.88rem;
 }
 
+.start-field {
+  margin-bottom: 18px;
+}
+
+.start-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 650;
+}
+
+.field-help {
+  margin: 0 0 8px;
+  color: #59636f;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .consent-check {
   display: flex;
   align-items: flex-start;
